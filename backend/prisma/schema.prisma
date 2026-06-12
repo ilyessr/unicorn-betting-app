@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RaceStatus {
+  SCHEDULED
+  OPEN
+  CLOSED
+  FINISHED
+}
+
+enum BetType {
+  WINNER
+  TOP_3
+  TOP_5
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  bets      Bet[]
+  events    ProductEvent[]
+}
+
+model Unicorn {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String
+  victories Int      @default(0)
+  createdAt DateTime @default(now())
+  entries   RaceEntry[]
+  picks     BetSelection[]
+}
+
+model Race {
+  id          String      @id @default(cuid())
+  name        String
+  startsAt    DateTime
+  bettingOpen DateTime
+  status      RaceStatus  @default(SCHEDULED)
+  totalPool   Decimal     @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime    @default(now())
+  entries     RaceEntry[]
+  bets        Bet[]
+
+  @@index([startsAt])
+  @@index([bettingOpen, status])
+}
+
+model RaceEntry {
+  id         String  @id @default(cuid())
+  raceId     String
+  unicornId  String
+  lane       Int
+  finishRank Int?
+  race       Race    @relation(fields: [raceId], references: [id])
+  unicorn    Unicorn @relation(fields: [unicornId], references: [id])
+
+  @@unique([raceId, unicornId])
+  @@unique([raceId, lane])
+}
+
+model Bet {
+  id          String         @id @default(cuid())
+  userId      String
+  raceId      String
+  type        BetType
+  amount      Decimal        @db.Decimal(12, 2)
+  potentialWin Decimal       @db.Decimal(12, 2)
+  status      BetStatus      @default(PENDING)
+  createdAt   DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id])
+  race        Race           @relation(fields: [raceId], references: [id])
+  selections  BetSelection[]
+  payment     Payment?
+
+  @@index([raceId, type, status])
+  @@index([userId, createdAt])
+}
+
+model BetSelection {
+  id        String  @id @default(cuid())
+  betId     String
+  unicornId String
+  position  Int
+  bet       Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+  unicorn   Unicorn @relation(fields: [unicornId], references: [id])
+
+  @@unique([betId, position])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  betId          String        @unique
+  provider       String        @default("stripe")
+  providerRef    String?
+  cardLast4      String
+  amount         Decimal       @db.Decimal(12, 2)
+  status         PaymentStatus @default(PENDING)
+  authorizedAt   DateTime?
+  capturedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  bet            Bet           @relation(fields: [betId], references: [id])
+}
+
+model ProductEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  target    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([name, target, createdAt])
+  @@index([userId, createdAt])
+}
