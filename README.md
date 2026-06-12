@@ -87,5 +87,3 @@ npm run dev
 ## Notes
 
 The payment flow is simulated. No real card payment is processed.
-
-The seed creates demo users, My Little Pony-inspired unicorn names, today's races and sample product analytics events.
