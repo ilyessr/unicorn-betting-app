@@ -1,0 +1,18 @@
+{
+  "name": "unicorn-betting",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "dev:backend": "npm run start:dev --workspace backend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:up": "docker compose up -d postgres",
+    "db:migrate": "npm run prisma:migrate --workspace backend",
+    "db:seed": "npm run prisma:seed --workspace backend"
+  }
+}
