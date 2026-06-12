@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: unicorn-betting-postgres
+    environment:
+      POSTGRES_USER: unicorn
+      POSTGRES_PASSWORD: unicorn
+      POSTGRES_DB: unicorn_bets
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unicorn -d unicorn_bets"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
