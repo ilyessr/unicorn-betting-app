@@ -1,43 +1,73 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  api,
-  BetType,
-  BettorDashboard,
-  ProductDashboard,
-  Race,
-  Unicorn,
-} from "./api";
+import { analyticsApi, BetType, Unicorn } from "./api";
 import { AppNav } from "./components/AppNav";
 import { Page, selectionCount } from "./constants";
+import { useAppData } from "./hooks/useAppData";
+import { useCreateBet } from "./hooks/useCreateBet";
 import { BetHistoryModal } from "./modals/BetHistoryModal";
 import { ConfirmBetModal } from "./modals/ConfirmBetModal";
 import { SuccessModal } from "./modals/SuccessModal";
 import { BettorDashboardPage } from "./pages/BettorDashboardPage";
 import { ProductUsagePage } from "./pages/ProductUsagePage";
 import { RacesPage } from "./pages/RacesPage";
-import { delay } from "./utils/format";
 
 export function App() {
-  const [races, setRaces] = useState<Race[]>([]);
   const [selectedRaceId, setSelectedRaceId] = useState<string>("");
   const [betType, setBetType] = useState<BetType>("WINNER");
   const [selectedUnicornIds, setSelectedUnicornIds] = useState<string[]>([]);
   const [amount, setAmount] = useState(10);
-  const [bettor, setBettor] = useState<BettorDashboard | null>(null);
-  const [product, setProduct] = useState<ProductDashboard | null>(null);
-  const [demoUserId, setDemoUserId] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [productLoading, setProductLoading] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [page, setPage] = useState<Page>("races");
+
+  const {
+    races,
+    bettor,
+    product,
+    demoUserId,
+    loading,
+    productLoading,
+    error,
+    hasNoDemoUser,
+    refreshProductUsage,
+    refreshAll,
+  } = useAppData();
 
   const selectedRace =
     races.find((race) => race.id === selectedRaceId) ?? races[0];
+
+  const {
+    error: createBetError,
+    isPending: isCreatingBet,
+    isSuccess: hasCreatedBet,
+    mutate: createBet,
+    reset: resetCreateBet,
+  } = useCreateBet({
+    amount,
+    betType,
+    demoUserId,
+    selectedRace,
+    selectedUnicornIds,
+  });
+
+  useEffect(() => {
+    if (hasCreatedBet) {
+      setIsConfirmOpen(false);
+      setIsSuccessOpen(true);
+      setSelectedUnicornIds([]);
+      resetCreateBet();
+    }
+  }, [hasCreatedBet, resetCreateBet]);
+
+  useEffect(() => {
+    if (createBetError) {
+      setIsConfirmOpen(false);
+      setMessage(createBetError instanceof Error ? createBetError.message : "Impossible de créer le pari");
+    }
+  }, [createBetError]);
 
   const selectedPotentialWin = useMemo(() => {
     const odds = betType === "WINNER" ? 4.5 : betType === "TOP_3" ? 2.4 : 1.6;
@@ -56,58 +86,27 @@ export function App() {
     }, []);
   }, [selectedRace, selectedUnicornIds]);
 
-  const loadData = async () => {
-    setLoading(true);
-    const raceList = await api.races();
-    setRaces(raceList);
-    setSelectedRaceId((current) => current || raceList[0]?.id || "");
-
-    const demoUser = await api.demoUser();
-    if (!demoUser) {
-      throw new Error("Aucun parieur de démonstration. Lancez le seed Prisma.");
+  useEffect(() => {
+    if (!selectedRaceId && races[0]) {
+      setSelectedRaceId(races[0].id);
     }
-
-    setDemoUserId(demoUser.id);
-    const [bettorDashboard, productDashboard] = await Promise.all([
-      api.bettorDashboard(demoUser.id),
-      api.productDashboard(),
-    ]);
-    setBettor(bettorDashboard);
-    setProduct(productDashboard);
-    setLoading(false);
-  };
-
-  const refreshProductUsage = async () => {
-    setProductLoading(true);
-    try {
-      await api.track({
-        userId: demoUserId || undefined,
-        name: "view",
-        target: "product-dashboard",
-      });
-      const productDashboard = await api.productDashboard();
-      setProduct(productDashboard);
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Impossible de rafraîchir les données produit",
-      );
-    } finally {
-      setProductLoading(false);
-    }
-  };
+  }, [races, selectedRaceId]);
 
   useEffect(() => {
-    loadData().catch((error) => {
-      setMessage(error.message);
-      setLoading(false);
-    });
-  }, []);
+    if (hasNoDemoUser) {
+      setMessage("Aucun parieur de démonstration. Lancez le seed Prisma.");
+    }
+  }, [hasNoDemoUser]);
+
+  useEffect(() => {
+    if (error) {
+      setMessage(error instanceof Error ? error.message : "Impossible de charger les données");
+    }
+  }, [error]);
 
   useEffect(() => {
     if (demoUserId) {
-      api.track({ userId: demoUserId, name: "view", target: "race-list" });
+      analyticsApi.track({ userId: demoUserId, name: "view", target: "race-list" });
     }
   }, [demoUserId]);
 
@@ -145,36 +144,7 @@ export function App() {
     if (!selectedRace) return;
 
     setMessage("");
-    setIsSubmitting(true);
-    await api.track({
-      userId: demoUserId,
-      name: "click",
-      target: "bet-submit",
-      metadata: { betType },
-    });
-
-    try {
-      await delay(1200);
-      await api.createBet({
-        userId: demoUserId,
-        raceId: selectedRace.id,
-        type: betType,
-        amount,
-        unicornIds: selectedUnicornIds,
-        card: { token: "tok_demo_card", last4: "4242" },
-      });
-      setIsConfirmOpen(false);
-      setIsSuccessOpen(true);
-      setSelectedUnicornIds([]);
-      await loadData();
-    } catch (error) {
-      setIsConfirmOpen(false);
-      setMessage(
-        error instanceof Error ? error.message : "Impossible de créer le pari",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    createBet();
   };
 
   return (
@@ -189,7 +159,7 @@ export function App() {
         </div>
         <button
           className="icon-button"
-          onClick={() => loadData()}
+          onClick={refreshAll}
           aria-label="Rafraîchir"
         >
           <RefreshCw size={18} />
@@ -216,7 +186,7 @@ export function App() {
           onOpenConfirm={() => setIsConfirmOpen(true)}
           onRaceSelect={handleRaceSelect}
           onTrackRaceClick={(raceId) =>
-            api.track({
+            analyticsApi.track({
               userId: demoUserId,
               name: "click",
               target: "race-row",
@@ -224,7 +194,7 @@ export function App() {
             })
           }
           onTrackTypeClick={(type) =>
-            api.track({
+            analyticsApi.track({
               userId: demoUserId,
               name: "click",
               target: `bet-type-${type.toLowerCase()}`,
@@ -249,7 +219,7 @@ export function App() {
         <ConfirmBetModal
           amount={amount}
           betType={betType}
-          isSubmitting={isSubmitting}
+          isSubmitting={isCreatingBet}
           selectedPotentialWin={selectedPotentialWin}
           selectedRace={selectedRace}
           selectedUnicorns={selectedUnicorns}

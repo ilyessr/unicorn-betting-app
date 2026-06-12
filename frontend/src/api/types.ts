@@ -1,5 +1,3 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
 export type BetType = 'WINNER' | 'TOP_3' | 'TOP_5';
 
 export type Unicorn = {
@@ -60,43 +58,18 @@ export type ProductDashboard = {
   mostWinningUnicorn: Unicorn | null;
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-    ...init,
-  });
+export type CreateBetPayload = {
+  userId: string;
+  raceId: string;
+  type: BetType;
+  amount: number;
+  unicornIds: string[];
+  card: { token: string; last4: string };
+};
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.message ?? 'Request failed');
-  }
-
-  return response.json();
-}
-
-export const api = {
-  races: () => request<Race[]>('/races'),
-  demoUser: () => request<{ id: string; name: string; email: string; balance: string } | null>('/dashboard/demo-user'),
-  bettorDashboard: (userId: string) => request<BettorDashboard>(`/dashboard/bettors/${userId}`),
-  productDashboard: () => request<ProductDashboard>('/dashboard/product'),
-  createBet: (payload: {
-    userId: string;
-    raceId: string;
-    type: BetType;
-    amount: number;
-    unicornIds: string[];
-    card: { token: string; last4: string };
-  }) =>
-    request('/bets', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  track: (payload: { userId?: string; name: string; target: string; metadata?: Record<string, unknown> }) =>
-    request('/analytics/events', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }).catch(() => undefined),
+export type TrackEventPayload = {
+  userId?: string;
+  name: string;
+  target: string;
+  metadata?: Record<string, unknown>;
 };
