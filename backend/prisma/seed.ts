@@ -32,62 +32,24 @@ const unicorns = [
   ["Princess Cadance", "#f0abfc"],
 ] as const;
 
-function buildTodayRaceStarts(now: Date) {
-  const dayStart = new Date(now);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(now);
-  dayEnd.setHours(23, 59, 59, 999);
+function buildRaceStarts(now: Date) {
+  const firstDay = new Date(now);
+  firstDay.setHours(0, 0, 0, 0);
 
-  const futureOpenStarts = [10, 20, 30]
-    .map(
-      (offsetInMinutes) =>
-        new Date(now.getTime() + offsetInMinutes * 60 * 1000),
-    )
-    .filter((startsAt) => startsAt < dayEnd);
+  const raceStarts: Date[] = [];
+  const daysToSeed = 7;
+  const raceIntervalInHours = 2;
 
-  if (futureOpenStarts.length < 3) {
-    const remainingMs = dayEnd.getTime() - now.getTime();
-    [0.25, 0.5, 0.75].forEach((ratio) => {
-      const startsAt = new Date(
-        now.getTime() + Math.floor(remainingMs * ratio),
-      );
-      if (startsAt > now && startsAt < dayEnd) {
-        futureOpenStarts.push(startsAt);
-      }
-    });
+  for (let dayOffset = 0; dayOffset < daysToSeed; dayOffset += 1) {
+    for (let hour = 0; hour < 24; hour += raceIntervalInHours) {
+      const startsAt = new Date(firstDay);
+      startsAt.setDate(firstDay.getDate() + dayOffset);
+      startsAt.setHours(hour, 0, 0, 0);
+      raceStarts.push(startsAt);
+    }
   }
 
-  const regularRaceMinutes = [
-    9 * 60,
-    10 * 60 + 15,
-    11 * 60 + 30,
-    12 * 60 + 45,
-    14 * 60,
-    15 * 60 + 15,
-    16 * 60 + 30,
-    17 * 60 + 45,
-    19 * 60,
-    20 * 60 + 15,
-    21 * 60 + 30,
-    22 * 60 + 45,
-  ];
-
-  const raceStartsByTime = new Map<number, Date>();
-  futureOpenStarts
-    .sort((a, b) => a.getTime() - b.getTime())
-    .slice(0, 3)
-    .forEach((startsAt) => raceStartsByTime.set(startsAt.getTime(), startsAt));
-
-  for (const minute of regularRaceMinutes) {
-    if (raceStartsByTime.size >= 10) break;
-    const startsAt = new Date(dayStart);
-    startsAt.setMinutes(minute);
-    raceStartsByTime.set(startsAt.getTime(), startsAt);
-  }
-
-  return Array.from(raceStartsByTime.values()).sort(
-    (a, b) => a.getTime() - b.getTime(),
-  );
+  return raceStarts;
 }
 
 async function main() {
@@ -130,7 +92,7 @@ async function main() {
   );
 
   const now = new Date();
-  const raceStarts = buildTodayRaceStarts(now);
+  const raceStarts = buildRaceStarts(now);
 
   for (let raceIndex = 0; raceIndex < raceStarts.length; raceIndex += 1) {
     const startsAt = raceStarts[raceIndex];

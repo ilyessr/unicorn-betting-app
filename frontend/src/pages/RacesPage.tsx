@@ -1,9 +1,9 @@
-import { Activity, BarChart3, CreditCard, Trophy, Users } from 'lucide-react';
-import { BetType, ProductDashboard, Race, Unicorn } from '../api';
-import { Kpi } from '../components/Kpi';
-import { Status } from '../components/Status';
-import { betTypeLabels, selectionCount } from '../constants';
-import { formatMoney, formatTime } from '../utils/format';
+import { Activity, BarChart3, CreditCard, Trophy, Users } from "lucide-react";
+import { BetType, ProductDashboard, Race, Unicorn } from "../api";
+import { Kpi } from "../components/Kpi";
+import { Status } from "../components/Status";
+import { betTypeLabels, selectionCount } from "../constants";
+import { formatMoney, formatTime } from "../utils/format";
 
 type RacesPageProps = {
   amount: number;
@@ -45,23 +45,34 @@ export function RacesPage({
   return (
     <>
       <section className="kpi-grid">
-        <Kpi icon={<Trophy />} label="Licorne la plus gagnante" value={product?.mostWinningUnicorn?.name ?? '-'} />
-        <Kpi icon={<Activity />} label="Paris enregistrés" value={product?.kpis.betCount ?? 0} />
-        <Kpi icon={<BarChart3 />} label="Paris perdus" value={product?.kpis.lostBetCount ?? 0} />
+        <Kpi
+          icon={<Trophy />}
+          label="Licorne la plus gagnante"
+          value={product?.mostWinningUnicorn?.name ?? "-"}
+        />
+        <Kpi
+          icon={<Activity />}
+          label="Paris enregistrés"
+          value={product?.kpis.betCount ?? 0}
+        />
+        <Kpi
+          icon={<BarChart3 />}
+          label="Paris perdus"
+          value={product?.kpis.lostBetCount ?? 0}
+        />
         <Kpi icon={<Users />} label="Courses du jour" value={races.length} />
       </section>
 
       <section className="workspace">
         <div className="panel race-panel">
           <div className="panel-heading">
-            <h2>10 courses aujourd'hui</h2>
-            <span>{loading ? 'Chargement' : `${races.length} programmées`}</span>
+            <h2>{races.length} courses programmées aujourd'hui</h2>
           </div>
           <div className="race-list">
             {races.map((race) => (
               <button
                 key={race.id}
-                className={`race-row ${selectedRace?.id === race.id ? 'is-active' : ''}`}
+                className={`race-row ${selectedRace?.id === race.id ? "is-active" : ""}`}
                 onClick={() => {
                   onRaceSelect(race.id);
                   onTrackRaceClick(race.id);
@@ -69,7 +80,10 @@ export function RacesPage({
               >
                 <span>
                   <strong>{race.name}</strong>
-                  <small>Départ {formatTime(race.startsAt)} · ouverture {formatTime(race.bettingOpen)}</small>
+                  <small>
+                    Départ {formatTime(race.startsAt)} · ouverture{" "}
+                    {formatTime(race.bettingOpen)}
+                  </small>
                 </span>
                 <Status status={race.status} />
               </button>
@@ -80,14 +94,14 @@ export function RacesPage({
         <div className="panel bet-panel">
           <div className="panel-heading">
             <h2>Composer un pari</h2>
-            <span>{selectedRace?.name ?? '-'}</span>
+            <span>{selectedRace?.name ?? "-"}</span>
           </div>
 
           <div className="segmented">
             {(Object.keys(betTypeLabels) as BetType[]).map((type) => (
               <button
                 key={type}
-                className={betType === type ? 'is-active' : ''}
+                className={betType === type ? "is-active" : ""}
                 onClick={() => {
                   onBetTypeChange(type);
                   onTrackTypeClick(type);
@@ -114,7 +128,12 @@ export function RacesPage({
 
           <label className="amount-field">
             Mise
-            <input min={1} type="number" value={amount} onChange={(event) => onAmountChange(Number(event.target.value))} />
+            <input
+              min={1}
+              type="number"
+              value={amount}
+              onChange={(event) => onAmountChange(Number(event.target.value))}
+            />
           </label>
 
           <div className="payment-row">
@@ -125,7 +144,12 @@ export function RacesPage({
 
           <button
             className="primary-button"
-            disabled={!demoUserId || !selectedRace || selectedUnicornIds.length !== selectionCount[betType] || selectedRace.status !== 'OPEN'}
+            disabled={
+              !demoUserId ||
+              !selectedRace ||
+              selectedUnicornIds.length !== selectionCount[betType] ||
+              selectedRace.status !== "OPEN"
+            }
             onClick={onOpenConfirm}
           >
             Parier
@@ -152,15 +176,20 @@ function RunnerCard({
   onClick: () => void;
 }) {
   return (
-    <button className={`runner ${isSelected ? 'is-selected' : ''}`} onClick={onClick}>
-      {betType !== 'WINNER' && isSelected ? (
+    <button
+      className={`runner ${isSelected ? "is-selected" : ""}`}
+      onClick={onClick}
+    >
+      {betType !== "WINNER" && isSelected ? (
         <span className="selection-rank">{selectedIndex + 1}</span>
       ) : (
         <span className="swatch" style={{ background: unicorn.color }} />
       )}
       <span>
         <strong>{unicorn.name}</strong>
-        <small>Couloir {lane} · {unicorn.victories} victoires</small>
+        <small>
+          Couloir {lane} · {unicorn.victories} victoires
+        </small>
       </span>
     </button>
   );
